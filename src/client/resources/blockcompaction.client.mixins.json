@@ -5,8 +5,8 @@
 	"client": [
 		"AbstractContainerScreenAccessor",
 		"AbstractContainerScreenMixin",
-		"MinecraftMixin",
-		"ScreenMixin"
+		"InventoryAccessor",
+		"MinecraftMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

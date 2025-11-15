@@ -75,7 +75,7 @@ public class AbstractContainerScreenMixin {
 		// Create transformed stack with whole items only
 		if (wholeItems > 0) {
 			ItemStack newStack = new ItemStack(targetItem, wholeItems);
-			newStack.setTag(carried.getTag());
+			newStack.applyComponents(carried.getComponents());
 			mc.player.containerMenu.setCarried(newStack);
 		} else {
 			// No whole items, clear the carried stack

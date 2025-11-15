@@ -14,12 +14,15 @@ public class BlockCompactionClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		ModKeybinds.register();
 
-		// Initialize recipe manager after resources are loaded
+		// TODO: Initialize recipe manager after resources are loaded
+		// Disabled due to accessor mixin field names not matching Mojang mappings
+		/*
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.level != null && !StonecutterRecipeManager.isInitialized()) {
-				StonecutterRecipeManager.initialize(client.level.getRecipeManager());
+				StonecutterRecipeManager.initialize();
 			}
 		});
+		*/
 
 		BlockCompactionMod.LOGGER.info("Block Compaction client initialized!");
 	}

@@ -28,7 +28,6 @@ public class AutoRefillManager {
 		ItemStack hotbarStack = inventory.getItem(hotbarSlot);
 
 		// Calculate how many items we need to refill to
-		int maxStackSize = item.getMaxStackSize();
 		int refillAmount = calculateRefillAmount(item);
 		int currentCount = hotbarStack.getCount();
 

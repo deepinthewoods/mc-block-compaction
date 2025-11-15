@@ -77,7 +77,7 @@ public class PlayerMixin {
 
 			// Set the item entity to the blocks we're adding
 			ItemStack newStack = new ItemStack(baseItem, blocksToAddToStacks);
-			newStack.setTag(stack.getTag());
+			newStack.applyComponents(stack.getComponents());
 			itemEntity.setItem(newStack);
 		} else {
 			// No partial stacks or not enough for a whole block
@@ -87,7 +87,7 @@ public class PlayerMixin {
 
 			if (wholeBlocks > 0) {
 				ItemStack newStack = new ItemStack(baseItem, wholeBlocks);
-				newStack.setTag(stack.getTag());
+				newStack.applyComponents(stack.getComponents());
 				itemEntity.setItem(newStack);
 			} else {
 				// No whole blocks yet, remove the item entity (fractional amount is tracked)
@@ -102,10 +102,11 @@ public class PlayerMixin {
 	 */
 	private int getSpaceInPartialStacks(Player player, Item item) {
 		int totalSpace = 0;
-		int maxStackSize = item.getMaxStackSize();
+		int maxStackSize = new ItemStack(item).getMaxStackSize();
 
-		// Check main inventory
-		for (ItemStack invStack : player.getInventory().items) {
+		// Check main inventory (iterate through all slots)
+		for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+			ItemStack invStack = player.getInventory().getItem(i);
 			if (!invStack.isEmpty() && invStack.getItem() == item && invStack.getCount() < maxStackSize) {
 				totalSpace += (maxStackSize - invStack.getCount());
 			}

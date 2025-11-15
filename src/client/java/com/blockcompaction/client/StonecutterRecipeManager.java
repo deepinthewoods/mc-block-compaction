@@ -1,10 +1,14 @@
 package com.blockcompaction.client;
 
 import com.blockcompaction.BlockCompactionMod;
+import com.blockcompaction.mixin.ClientPacketListenerAccessor;
+import com.blockcompaction.mixin.IngredientAccessor;
+import com.blockcompaction.mixin.RecipeManagerAccessor;
+import com.blockcompaction.mixin.SingleItemRecipeAccessor;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 
@@ -25,37 +29,69 @@ public class StonecutterRecipeManager {
 	// Maps any block to its family's base block
 	private static final Map<Item, Item> blockToBase = new HashMap<>();
 
-	public static void initialize(RecipeManager recipeManager) {
+	public static void initialize() {
 		if (initialized) return;
 
 		recipeData.clear();
 		blockFamilies.clear();
 		blockToBase.clear();
 
-		// Step 1: Load all stonecutter recipes with their output counts
-		Collection<RecipeHolder<StonecutterRecipe>> recipes =
-			recipeManager.getAllRecipesFor(RecipeType.STONECUTTING);
+		Minecraft client = Minecraft.getInstance();
+		if (client.level == null || client.getConnection() == null) {
+			return;
+		}
 
+		// Step 1: Load all stonecutter recipes with their output counts
 		Map<Item, Item> directBaseMapping = new HashMap<>();
 
-		for (RecipeHolder<StonecutterRecipe> holder : recipes) {
-			StonecutterRecipe recipe = holder.value();
-
-			ItemStack[] inputs = recipe.getIngredients().get(0).getItems();
-			ItemStack output = recipe.getResultItem(null);
-
-			if (inputs.length > 0 && !output.isEmpty()) {
-				Item inputItem = inputs[0].getItem();
-				Item outputItem = output.getItem();
-				int outputCount = output.getCount();
-
-				// Store recipe data
-				recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
-					.put(outputItem, outputCount);
-
-				// Track that outputItem derives from inputItem
-				directBaseMapping.putIfAbsent(outputItem, inputItem);
+		try {
+			var connection = client.getConnection();
+			if (connection == null) {
+				return;
 			}
+
+			var recipeManager = ((ClientPacketListenerAccessor) connection).getRecipeManager();
+			var allRecipes = ((RecipeManagerAccessor) recipeManager).getRecipes().values();
+
+			for (Object recipeEntry : allRecipes) {
+				if (!(recipeEntry instanceof RecipeHolder<?> holder)) {
+					continue;
+				}
+
+				if (holder.value().getType() != RecipeType.STONECUTTING) {
+					continue;
+				}
+
+				if (!(holder.value() instanceof StonecutterRecipe)) {
+					continue;
+				}
+
+				try {
+					SingleItemRecipeAccessor recipe = (SingleItemRecipeAccessor) holder.value();
+
+					ItemStack[] inputs = ((IngredientAccessor) (Object) recipe.getIngredient()).getItemStacks();
+					ItemStack output = recipe.getResult();
+
+					if (inputs.length > 0 && !output.isEmpty()) {
+						Item inputItem = inputs[0].getItem();
+						Item outputItem = output.getItem();
+						int outputCount = output.getCount();
+
+						// Store recipe data
+						recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
+							.put(outputItem, outputCount);
+
+						// Track that outputItem derives from inputItem
+						directBaseMapping.putIfAbsent(outputItem, inputItem);
+					}
+				} catch (Exception e) {
+					// Skip recipes that fail to process
+					BlockCompactionMod.LOGGER.debug("Failed to process stonecutter recipe: {}", e.getMessage());
+				}
+			}
+		} catch (Exception e) {
+			BlockCompactionMod.LOGGER.error("Failed to initialize stonecutter recipes", e);
+			return;
 		}
 
 		// Step 2: Find base blocks (blocks that aren't derived from anything)

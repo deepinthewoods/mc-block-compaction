@@ -42,7 +42,7 @@ public class MinecraftMixin {
 				// Item was used (count decreased) and is now at 1 or 0
 				if (previousCount > currentCount && currentCount <= 1) {
 					Item item = currentHeldItem.getItem();
-					int selectedSlot = player.getInventory().selected;
+					int selectedSlot = ((InventoryAccessor) player.getInventory()).getSelected();
 
 					// Try to refill
 					AutoRefillManager.tryRefill(player, selectedSlot, item);
