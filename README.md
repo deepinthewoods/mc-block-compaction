@@ -20,7 +20,18 @@ A Minecraft Fabric mod that brings stonecutter-style block transformations direc
 ### 📦 Auto-Compaction
 - Items picked up from the ground automatically transform into their base block form
 - Uses fractional tracking to handle slabs and other partial blocks correctly
+- Only converts if you don't have space in existing stacks of that item type
 - Example: Pick up 1 stone slab → stores 0.5 base blocks, pick up another → get 1 stone block
+
+### 🔄 Auto-Refill
+- Automatically restocks your hotbar when placing blocks
+- Triggers when a block count drops to 1 or below
+- **Smart priority system**:
+  1. First searches for identical blocks in your inventory
+  2. Then converts from base blocks (e.g., stone → stone stairs)
+  3. Finally converts from other family blocks (e.g., walls → stairs)
+- **Ratio-aware refills**: Refills with correct amounts (1 for normal blocks, 2 for slabs, etc.)
+- Example: Placing stairs with 1 left + have stone in inventory → auto-converts stone to stairs
 
 ### ⌨️ Keybind
 - Press `B` (configurable) to toggle the mod on/off
@@ -53,6 +64,16 @@ A Minecraft Fabric mod that brings stonecutter-style block transformations direc
 - Available transformations: Stone (1:1), Stone Slabs (1:2), Stone Walls (1:1), Stone Bricks (1:1), etc.
 - Select Stone Slabs → pick up 1 stair, get 2 slabs
 - Or select Stone Walls → pick up stairs, get walls (1:1 conversion)
+
+**Example 4: Auto-Refill While Building**
+- You're placing stone stairs and have 2 left in your hotbar
+- Place one → down to 1 stair
+- Auto-refill triggers:
+  - First checks for more stairs in inventory (finds none)
+  - Then checks for stone blocks (finds 64 in inventory)
+  - Converts 1 stone → 1 stair, automatically refills hotbar
+- You now have 1 stair in hotbar, 63 stone in inventory
+- Continue building without manually restocking!
 
 ## Technical Details
 
