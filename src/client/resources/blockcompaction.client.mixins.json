@@ -5,8 +5,14 @@
 	"client": [
 		"AbstractContainerScreenAccessor",
 		"AbstractContainerScreenMixin",
+		"ClientPacketListenerAccessor",
+		"IngredientAccessor",
 		"InventoryAccessor",
-		"MinecraftMixin"
+		"MinecraftMixin",
+		"PlayerMixin",
+		"RecipeManagerAccessor",
+		"ScreenMixin",
+		"SingleItemRecipeAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
