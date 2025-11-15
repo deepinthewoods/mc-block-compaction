@@ -25,11 +25,13 @@ public class AbstractContainerScreenMixin {
 	@Inject(method = "slotClicked", at = @At("RETURN"))
 	private void onSlotClickedReturn(Slot slot, int slotId, int mouseButton, ClickType type, CallbackInfo ci) {
 		if (!BlockCompactionClient.isEnabled()) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: mod disabled");
 			return;
 		}
 
 		// Only transform on pickup (left/right click)
 		if (type != ClickType.PICKUP) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: not PICKUP type, was {}", type);
 			return;
 		}
 
@@ -41,9 +43,19 @@ public class AbstractContainerScreenMixin {
 				Item sourceItem = carried.getItem();
 				Item targetItem = TransformationSelectionManager.getSelectedTransformation(sourceItem);
 
+				com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: sourceItem={}, targetItem={}, hasTransformations={}, selectionIndex={}",
+					sourceItem, targetItem, StonecutterRecipeManager.hasTransformations(sourceItem),
+					TransformationSelectionManager.getSelectionIndex(sourceItem));
+
 				if (targetItem != null && targetItem != sourceItem) {
+					com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: transforming {} to {}", sourceItem, targetItem);
 					transformCarriedStack(mc, carried, sourceItem, targetItem);
+				} else {
+					com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: skipping transform (targetItem={}, same={})",
+						targetItem, targetItem == sourceItem);
 				}
+			} else {
+				com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: carried is empty");
 			}
 		}
 	}
@@ -95,6 +107,7 @@ public class AbstractContainerScreenMixin {
 
 		Slot hoveredSlot = ((AbstractContainerScreenAccessor) this).getHoveredSlot();
 		if (hoveredSlot == null || !hoveredSlot.hasItem()) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction mouseScrolled: no hovered slot or empty");
 			return;
 		}
 
@@ -102,14 +115,17 @@ public class AbstractContainerScreenMixin {
 		Item item = stack.getItem();
 
 		if (!StonecutterRecipeManager.hasTransformations(item)) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction mouseScrolled: {} has no transformations", item);
 			return;
 		}
 
 		double scrollDelta = Math.abs(scrollDeltaY) > 0.0001 ? scrollDeltaY : scrollDeltaX;
 		if (Math.abs(scrollDelta) <= 0.0001) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction mouseScrolled: scroll delta too small");
 			return;
 		}
 
+		com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction mouseScrolled: processing scroll for {}", item);
 		TransformationSelectionManager.scrollSelection(item, (int) Math.signum(scrollDelta));
 		cir.setReturnValue(true);
 	}
