@@ -102,7 +102,7 @@ public abstract class ScreenMixin {
 	 * Handle mouse scroll for selection
 	 */
 	@Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-	private void onMouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY, CallbackInfoReturnable<Boolean> cir) {
+	private void onMouseScrolled(double mouseX, double mouseY, double scrollDelta, CallbackInfoReturnable<Boolean> cir) {
 		if (!BlockCompactionClient.isEnabled()) {
 			return;
 		}
@@ -118,7 +118,7 @@ public abstract class ScreenMixin {
 			Item item = stack.getItem();
 
 			if (StonecutterRecipeManager.hasTransformations(item)) {
-				TransformationSelectionManager.scrollSelection(item, (int) Math.signum(scrollY));
+				TransformationSelectionManager.scrollSelection(item, (int) Math.signum(scrollDelta));
 				cir.setReturnValue(true);
 			}
 		}

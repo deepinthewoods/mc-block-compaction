@@ -8,8 +8,8 @@
 		"ClientPacketListenerAccessor",
 		"IngredientAccessor",
 		"InventoryAccessor",
+		"ItemEntityMixin",
 		"MinecraftMixin",
-		"PlayerMixin",
 		"RecipeManagerAccessor",
 		"ScreenMixin",
 		"SingleItemRecipeAccessor"
