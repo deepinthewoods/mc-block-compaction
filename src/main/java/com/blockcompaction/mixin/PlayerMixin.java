@@ -41,6 +41,13 @@ public class PlayerMixin {
 		Player player = (Player) (Object) this;
 		int sourceCount = stack.getCount();
 
+		// FIRST: Check if player already has the source item type
+		// If they do, don't convert - let Minecraft handle stacking naturally
+		if (playerHasItem(player, sourceItem)) {
+			// Player has the source item, don't convert
+			return;
+		}
+
 		// Calculate how many base blocks this represents
 		double ratio = StonecutterRecipeManager.getConversionRatio(sourceItem, baseItem);
 		double baseBlockAmount = sourceCount * ratio;
@@ -87,6 +94,18 @@ public class PlayerMixin {
 				itemEntity.discard();
 			}
 		}
+	}
+
+	/**
+	 * Check if player has any of the given item in their inventory
+	 */
+	private boolean playerHasItem(Player player, Item item) {
+		for (ItemStack invStack : player.getInventory().items) {
+			if (!invStack.isEmpty() && invStack.getItem() == item) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
