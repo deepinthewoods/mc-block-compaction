@@ -33,9 +33,11 @@ A Minecraft Fabric mod that brings stonecutter-style block transformations direc
 - **Ratio-aware refills**: Refills with correct amounts (1 for normal blocks, 2 for slabs, etc.)
 - Example: Placing stairs with 1 left + have stone in inventory → auto-converts stone to stairs
 
-### ⌨️ Keybind
-- Press `B` (configurable) to toggle the mod on/off
+### ⌨️ Keybinds
+- Press `B` (configurable) to toggle the entire mod on/off
+- Press `R` (configurable) to toggle auto-refill on/off
 - Shows on-screen notification when toggled
+- Both keybinds can be customized in Minecraft's controls menu under "Block Compaction" category
 
 ## How It Works
 
@@ -95,7 +97,9 @@ No config file needed! The mod works out of the box with sensible defaults.
 
 ## Keybinds
 
-- `B` - Toggle Block Compaction on/off (configurable in Minecraft's controls menu under "Block Compaction" category)
+- `B` - Toggle entire mod on/off (disables all features)
+- `R` - Toggle auto-refill on/off (keeps transformations active)
+- Both are configurable in Minecraft's controls menu under "Block Compaction" category
 
 ## Installation
 
