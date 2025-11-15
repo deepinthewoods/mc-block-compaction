@@ -1,0 +1,5 @@
+{
+  "key.blockcompaction.toggle": "Toggle Block Compaction",
+  "key.blockcompaction.toggle_autorefill": "Toggle Auto-Refill",
+  "category.blockcompaction": "Block Compaction"
+}
