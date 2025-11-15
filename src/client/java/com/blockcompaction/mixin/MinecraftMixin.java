@@ -27,7 +27,7 @@ public class MinecraftMixin {
 	 */
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void onClientTick(CallbackInfo ci) {
-		if (!BlockCompactionClient.isEnabled() || player == null) {
+		if (!BlockCompactionClient.isEnabled() || !BlockCompactionClient.isAutoRefillEnabled() || player == null) {
 			return;
 		}
 

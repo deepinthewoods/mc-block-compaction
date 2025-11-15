@@ -8,11 +8,18 @@ import org.lwjgl.glfw.GLFW;
 
 public class ModKeybinds {
 	private static KeyMapping toggleKey;
+	private static KeyMapping toggleAutoRefillKey;
 
 	public static void register() {
 		toggleKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.blockcompaction.toggle",
 			GLFW.GLFW_KEY_B,
+			"category.blockcompaction"
+		));
+
+		toggleAutoRefillKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+			"key.blockcompaction.toggle_autorefill",
+			GLFW.GLFW_KEY_R,
 			"category.blockcompaction"
 		));
 
@@ -23,6 +30,18 @@ public class ModKeybinds {
 					client.player.displayClientMessage(
 						net.minecraft.network.chat.Component.literal(
 							"Block Compaction: " + (BlockCompactionClient.isEnabled() ? "ON" : "OFF")
+						),
+						true
+					);
+				}
+			}
+
+			while (toggleAutoRefillKey.consumeClick()) {
+				BlockCompactionClient.toggleAutoRefill();
+				if (client.player != null) {
+					client.player.displayClientMessage(
+						net.minecraft.network.chat.Component.literal(
+							"Auto-Refill: " + (BlockCompactionClient.isAutoRefillEnabled() ? "ON" : "OFF")
 						),
 						true
 					);

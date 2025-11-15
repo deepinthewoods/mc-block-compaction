@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 public class BlockCompactionClient implements ClientModInitializer {
 	private static boolean enabled = true;
+	private static boolean autoRefillEnabled = true;
 
 	@Override
 	public void onInitializeClient() {
@@ -30,5 +31,14 @@ public class BlockCompactionClient implements ClientModInitializer {
 	public static void toggle() {
 		enabled = !enabled;
 		BlockCompactionMod.LOGGER.info("Block Compaction " + (enabled ? "enabled" : "disabled"));
+	}
+
+	public static boolean isAutoRefillEnabled() {
+		return autoRefillEnabled;
+	}
+
+	public static void toggleAutoRefill() {
+		autoRefillEnabled = !autoRefillEnabled;
+		BlockCompactionMod.LOGGER.info("Auto-Refill " + (autoRefillEnabled ? "enabled" : "disabled"));
 	}
 }
