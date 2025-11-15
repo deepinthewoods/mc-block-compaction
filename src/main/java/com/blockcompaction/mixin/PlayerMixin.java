@@ -38,24 +38,71 @@ public class PlayerMixin {
 	}
 
 	private void transformToBaseWithFractional(ItemEntity itemEntity, ItemStack stack, Item sourceItem, Item baseItem) {
+		Player player = (Player) (Object) this;
 		int sourceCount = stack.getCount();
 
 		// Calculate how many base blocks this represents
 		double ratio = StonecutterRecipeManager.getConversionRatio(sourceItem, baseItem);
 		double baseBlockAmount = sourceCount * ratio;
 
-		// Add to fractional tracker and extract whole blocks
-		int wholeBlocks = FractionalBlockTracker.addAndExtract(baseItem, baseBlockAmount);
+		// Add any existing fractional amount
+		double existingFractional = FractionalBlockTracker.getFractional(baseItem);
+		double totalAmount = baseBlockAmount + existingFractional;
 
-		// Update the item entity with whole base blocks only
-		if (wholeBlocks > 0) {
-			ItemStack newStack = new ItemStack(baseItem, wholeBlocks);
+		// Check if player has partial stacks of the base item we can add to
+		int spaceInPartialStacks = getSpaceInPartialStacks(player, baseItem);
+
+		if (spaceInPartialStacks > 0 && totalAmount >= 1.0) {
+			// We have partial stacks and at least 1 whole block to add
+			int wholeBlocks = (int) totalAmount;
+			int blocksToAddToStacks = Math.min(wholeBlocks, spaceInPartialStacks);
+
+			// Add to existing stacks via the item entity (Minecraft will handle stacking)
+			// The remaining blocks (if any) will be handled normally
+			double remainder = totalAmount - blocksToAddToStacks;
+
+			// Update fractional tracker with remainder
+			FractionalBlockTracker.clear(baseItem);
+			if (remainder > 0.0001) {
+				FractionalBlockTracker.addAndExtract(baseItem, remainder);
+			}
+
+			// Set the item entity to the blocks we're adding
+			ItemStack newStack = new ItemStack(baseItem, blocksToAddToStacks);
 			newStack.setTag(stack.getTag());
 			itemEntity.setItem(newStack);
 		} else {
-			// No whole blocks yet, remove the item entity (fractional amount is tracked)
-			itemEntity.setItem(ItemStack.EMPTY);
-			itemEntity.discard();
+			// No partial stacks or not enough for a whole block
+			// Use normal fractional tracking
+			FractionalBlockTracker.clear(baseItem);
+			int wholeBlocks = FractionalBlockTracker.addAndExtract(baseItem, totalAmount);
+
+			if (wholeBlocks > 0) {
+				ItemStack newStack = new ItemStack(baseItem, wholeBlocks);
+				newStack.setTag(stack.getTag());
+				itemEntity.setItem(newStack);
+			} else {
+				// No whole blocks yet, remove the item entity (fractional amount is tracked)
+				itemEntity.setItem(ItemStack.EMPTY);
+				itemEntity.discard();
+			}
 		}
+	}
+
+	/**
+	 * Get the total space available in partial stacks of the given item
+	 */
+	private int getSpaceInPartialStacks(Player player, Item item) {
+		int totalSpace = 0;
+		int maxStackSize = item.getMaxStackSize();
+
+		// Check main inventory
+		for (ItemStack invStack : player.getInventory().items) {
+			if (!invStack.isEmpty() && invStack.getItem() == item && invStack.getCount() < maxStackSize) {
+				totalSpace += (maxStackSize - invStack.getCount());
+			}
+		}
+
+		return totalSpace;
 	}
 }
