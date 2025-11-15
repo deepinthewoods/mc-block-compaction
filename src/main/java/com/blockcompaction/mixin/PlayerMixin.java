@@ -41,10 +41,11 @@ public class PlayerMixin {
 		Player player = (Player) (Object) this;
 		int sourceCount = stack.getCount();
 
-		// FIRST: Check if player already has the source item type
+		// FIRST: Check if player has space in existing stacks of the source item
 		// If they do, don't convert - let Minecraft handle stacking naturally
-		if (playerHasItem(player, sourceItem)) {
-			// Player has the source item, don't convert
+		int spaceInSourceStacks = getSpaceInPartialStacks(player, sourceItem);
+		if (spaceInSourceStacks > 0) {
+			// Player has space in source item stacks, don't convert
 			return;
 		}
 
@@ -94,18 +95,6 @@ public class PlayerMixin {
 				itemEntity.discard();
 			}
 		}
-	}
-
-	/**
-	 * Check if player has any of the given item in their inventory
-	 */
-	private boolean playerHasItem(Player player, Item item) {
-		for (ItemStack invStack : player.getInventory().items) {
-			if (!invStack.isEmpty() && invStack.getItem() == item) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**
