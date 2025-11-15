@@ -8,11 +8,19 @@ A Minecraft Fabric mod that brings stonecutter-style block transformations direc
 - **Hover tooltips**: See all available stonecutter transformations for any block in your inventory
 - **Scroll to select**: Use your mouse wheel to cycle through transformation options
 - **Click to transform**: Left or right-click to pick up items and automatically transform them to your selected type
-- **Bidirectional**: Transform blocks both ways (e.g., full blocks → stairs, or stairs → full blocks)
+- **Cross-transformations**: Any blocks from the same family can transform to each other (stairs ↔ walls ↔ slabs, etc.)
+- **Ratio display**: Tooltips show conversion ratios (e.g., "(1:2)" means 1 input creates 2 outputs)
+
+### 🧮 Recipe Ratio Tracking
+- **Respects recipe ratios**: 1 stone → 2 slabs is honored in both directions
+- **Fractional tracking**: Picking up 3 slabs (1.5 base blocks) gives you 1 base block and stores 0.5 for later
+- **No item loss**: Partial blocks are tracked until you have enough for a full block
+- **Stored amount display**: Tooltips show fractional amounts (e.g., "Stored: 0.50x")
 
 ### 📦 Auto-Compaction
 - Items picked up from the ground automatically transform into their base block form
-- Example: Pick up stone stairs from the ground, they become regular stone blocks
+- Uses fractional tracking to handle slabs and other partial blocks correctly
+- Example: Pick up 1 stone slab → stores 0.5 base blocks, pick up another → get 1 stone block
 
 ### ⌨️ Keybind
 - Press `B` (configurable) to toggle the mod on/off
@@ -25,6 +33,26 @@ A Minecraft Fabric mod that brings stonecutter-style block transformations direc
 3. **Scroll** to change which transformation is selected
 4. **Click** to pick up the stack, and it will transform into the selected block type
 5. **Selections persist** - your choice is remembered for each block type
+
+### Examples
+
+**Example 1: Slab to Full Block Conversion**
+- You have a stack of 3 stone slabs
+- Select "Stone" as the transformation target (ratio shows "2:1")
+- Pick up the stack → you get 1 stone block (3 slabs ÷ 2 = 1.5 blocks)
+- Tooltip shows "Stored: 0.50x" indicating half a block is saved
+- Pick up 1 more slab → you now get 1 more stone block (using the stored 0.5 + new 0.5)
+
+**Example 2: Full Block to Slab Conversion**
+- You have 2 stone blocks
+- Select "Stone Slab" as the transformation target (ratio shows "1:2")
+- Pick up the stack → you get 4 stone slabs (2 blocks × 2 = 4 slabs)
+
+**Example 3: Cross-Family Transformation**
+- You have stone stairs
+- Available transformations: Stone (1:1), Stone Slabs (1:2), Stone Walls (1:1), Stone Bricks (1:1), etc.
+- Select Stone Slabs → pick up 1 stair, get 2 slabs
+- Or select Stone Walls → pick up stairs, get walls (1:1 conversion)
 
 ## Technical Details
 
