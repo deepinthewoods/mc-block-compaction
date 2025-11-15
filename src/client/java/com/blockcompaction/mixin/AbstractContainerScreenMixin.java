@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(AbstractContainerScreen.class)
 public class AbstractContainerScreenMixin {
@@ -81,5 +82,35 @@ public class AbstractContainerScreenMixin {
 			// No whole items, clear the carried stack
 			mc.player.containerMenu.setCarried(ItemStack.EMPTY);
 		}
+	}
+
+	/**
+	 * Handle mouse scroll selection for transformations
+	 */
+	@Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
+	private void onMouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDeltaY, CallbackInfoReturnable<Boolean> cir) {
+		if (!BlockCompactionClient.isEnabled()) {
+			return;
+		}
+
+		Slot hoveredSlot = ((AbstractContainerScreenAccessor) this).getHoveredSlot();
+		if (hoveredSlot == null || !hoveredSlot.hasItem()) {
+			return;
+		}
+
+		ItemStack stack = hoveredSlot.getItem();
+		Item item = stack.getItem();
+
+		if (!StonecutterRecipeManager.hasTransformations(item)) {
+			return;
+		}
+
+		double scrollDelta = Math.abs(scrollDeltaY) > 0.0001 ? scrollDeltaY : scrollDeltaX;
+		if (Math.abs(scrollDelta) <= 0.0001) {
+			return;
+		}
+
+		TransformationSelectionManager.scrollSelection(item, (int) Math.signum(scrollDelta));
+		cir.setReturnValue(true);
 	}
 }

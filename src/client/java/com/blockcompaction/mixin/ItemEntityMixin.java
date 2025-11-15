@@ -22,9 +22,6 @@ public abstract class ItemEntityMixin {
 	@Shadow
 	public abstract void setItem(ItemStack stack);
 
-	@Shadow
-	public abstract void discard();
-
 	/**
 	 * Transform items to their base block when picked up from the ground,
 	 * with fractional tracking for items like slabs
@@ -101,7 +98,7 @@ public abstract class ItemEntityMixin {
 			} else {
 				// No whole blocks yet, remove the item entity (fractional amount is tracked)
 				setItem(ItemStack.EMPTY);
-				discard();
+				((ItemEntity) (Object) this).discard();
 			}
 		}
 	}

@@ -1,15 +1,13 @@
 package com.blockcompaction.client;
 
 import com.blockcompaction.BlockCompactionMod;
-import com.blockcompaction.mixin.ClientPacketListenerAccessor;
-import com.blockcompaction.mixin.IngredientAccessor;
-import com.blockcompaction.mixin.RecipeManagerAccessor;
-import com.blockcompaction.mixin.SingleItemRecipeAccessor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SelectableRecipe;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 
 import java.util.*;
@@ -50,43 +48,42 @@ public class StonecutterRecipeManager {
 				return;
 			}
 
-			var recipeManager = ((ClientPacketListenerAccessor) connection).getRecipeManager();
-			var allRecipes = ((RecipeManagerAccessor) recipeManager).getRecipes().values();
+			var registryAccess = client.level.registryAccess();
+			SelectableRecipe.SingleInputSet<StonecutterRecipe> stonecutterEntries = connection.recipes()
+				.stonecutterRecipes();
 
-			for (Object recipeEntry : allRecipes) {
-				if (!(recipeEntry instanceof RecipeHolder<?> holder)) {
+			for (SelectableRecipe.SingleInputEntry<StonecutterRecipe> entry : stonecutterEntries.entries()) {
+				var recipeHolderOptional = entry.recipe().recipe();
+				if (recipeHolderOptional.isEmpty()) {
 					continue;
 				}
 
-				if (holder.value().getType() != RecipeType.STONECUTTING) {
+				RecipeHolder<StonecutterRecipe> holder = recipeHolderOptional.get();
+
+				// Each ingredient may contain multiple possible input items (tags)
+				List<Item> inputItems = entry.input().items()
+					.map(Holder::value)
+					.toList();
+
+				if (inputItems.isEmpty()) {
 					continue;
 				}
 
-				if (!(holder.value() instanceof StonecutterRecipe)) {
-					continue;
-				}
-
-				try {
-					SingleItemRecipeAccessor recipe = (SingleItemRecipeAccessor) holder.value();
-
-					ItemStack[] inputs = ((IngredientAccessor) (Object) recipe.getIngredient()).getItemStacks();
-					ItemStack output = recipe.getResult();
-
-					if (inputs.length > 0 && !output.isEmpty()) {
-						Item inputItem = inputs[0].getItem();
-						Item outputItem = output.getItem();
-						int outputCount = output.getCount();
-
-						// Store recipe data
-						recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
-							.put(outputItem, outputCount);
-
-						// Track that outputItem derives from inputItem
-						directBaseMapping.putIfAbsent(outputItem, inputItem);
+				for (Item inputItem : inputItems) {
+					ItemStack output = holder.value().assemble(new SingleRecipeInput(new ItemStack(inputItem)), registryAccess);
+					if (output.isEmpty()) {
+						continue;
 					}
-				} catch (Exception e) {
-					// Skip recipes that fail to process
-					BlockCompactionMod.LOGGER.debug("Failed to process stonecutter recipe: {}", e.getMessage());
+
+					Item outputItem = output.getItem();
+					int outputCount = output.getCount();
+
+					// Store recipe data
+					recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
+						.put(outputItem, outputCount);
+
+					// Track that outputItem derives from inputItem
+					directBaseMapping.putIfAbsent(outputItem, inputItem);
 				}
 			}
 		} catch (Exception e) {

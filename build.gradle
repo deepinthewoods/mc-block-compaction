@@ -28,6 +28,10 @@ loom {
 		}
 	}
 
+	mixin {
+		defaultRefmapName = "blockcompaction.refmap.json"
+		useLegacyMixinAp = true
+	}
 }
 
 dependencies {
