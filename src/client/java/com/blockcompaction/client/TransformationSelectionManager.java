@@ -52,6 +52,7 @@ public class TransformationSelectionManager {
 	public static void scrollSelection(Item item, int delta) {
 		List<Item> transformations = StonecutterRecipeManager.getTransformations(item);
 		if (transformations.isEmpty()) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction scroll: no transformations for {}", item);
 			return;
 		}
 
@@ -66,6 +67,8 @@ public class TransformationSelectionManager {
 		}
 
 		selections.put(item, newIndex);
+		com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction scroll: {} delta={} index {} -> {} (selected: {})",
+			item, delta, currentIndex, newIndex, transformations.get(newIndex));
 	}
 
 	/**
