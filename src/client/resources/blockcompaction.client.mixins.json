@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "com.blockcompaction.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"AbstractContainerScreenAccessor",
+		"AbstractContainerScreenMixin",
+		"ScreenMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

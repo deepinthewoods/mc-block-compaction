@@ -1,31 +1,30 @@
 {
 	"schemaVersion": 1,
-	"id": "modid",
+	"id": "blockcompaction",
 	"version": "${version}",
-	"name": "Example mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Block Compaction",
+	"description": "Automatically transform blocks in your inventory using stonecutter recipes. Hover over blocks to see transformations, scroll to select, and pick up to transform!",
 	"authors": [
-		"Me!"
+		"deepinthewoods"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/deepinthewoods/mc-block-compaction"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/modid/icon.png",
+	"icon": "assets/blockcompaction/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.example.ExampleMod"
+			"com.blockcompaction.BlockCompactionMod"
 		],
 		"client": [
-			"com.example.ExampleModClient"
+			"com.blockcompaction.BlockCompactionClient"
 		]
 	},
 	"mixins": [
-		"modid.mixins.json",
+		"blockcompaction.mixins.json",
 		{
-			"config": "modid.client.mixins.json",
+			"config": "blockcompaction.client.mixins.json",
 			"environment": "client"
 		}
 	],
@@ -34,8 +33,5 @@
 		"minecraft": "~1.21.10",
 		"java": ">=21",
 		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }
