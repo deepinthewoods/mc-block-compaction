@@ -1,7 +1,6 @@
 package com.blockcompaction.client;
 
 import com.blockcompaction.BlockCompactionMod;
-import net.minecraft.client.RecipeBookCategories;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -12,73 +11,99 @@ import net.minecraft.world.item.crafting.StonecutterRecipe;
 import java.util.*;
 
 /**
- * Manages stonecutter recipes and provides transformation mappings
+ * Manages stonecutter recipes and provides transformation mappings with ratio tracking
  */
 public class StonecutterRecipeManager {
 	private static boolean initialized = false;
 
-	// Maps input item -> list of possible output items
-	private static final Map<Item, List<Item>> transformations = new HashMap<>();
+	// Recipe data: input -> output -> count (e.g., Stone -> Stone Slab -> 2)
+	private static final Map<Item, Map<Item, Integer>> recipeData = new HashMap<>();
 
-	// Maps input item -> base item (for reverse transformations)
-	private static final Map<Item, Item> reverseTransformations = new HashMap<>();
+	// Block families: base block -> set of all blocks in the family
+	private static final Map<Item, Set<Item>> blockFamilies = new HashMap<>();
+
+	// Maps any block to its family's base block
+	private static final Map<Item, Item> blockToBase = new HashMap<>();
 
 	public static void initialize(RecipeManager recipeManager) {
 		if (initialized) return;
 
-		transformations.clear();
-		reverseTransformations.clear();
+		recipeData.clear();
+		blockFamilies.clear();
+		blockToBase.clear();
 
-		// Load all stonecutter recipes
+		// Step 1: Load all stonecutter recipes with their output counts
 		Collection<RecipeHolder<StonecutterRecipe>> recipes =
 			recipeManager.getAllRecipesFor(RecipeType.STONECUTTING);
+
+		Map<Item, Item> directBaseMapping = new HashMap<>();
 
 		for (RecipeHolder<StonecutterRecipe> holder : recipes) {
 			StonecutterRecipe recipe = holder.value();
 
-			// Get the input and output items
 			ItemStack[] inputs = recipe.getIngredients().get(0).getItems();
 			ItemStack output = recipe.getResultItem(null);
 
 			if (inputs.length > 0 && !output.isEmpty()) {
 				Item inputItem = inputs[0].getItem();
 				Item outputItem = output.getItem();
+				int outputCount = output.getCount();
 
-				// Add forward transformation
-				transformations.computeIfAbsent(inputItem, k -> new ArrayList<>())
-					.add(outputItem);
+				// Store recipe data
+				recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
+					.put(outputItem, outputCount);
 
-				// Add reverse transformation (output -> input as base)
-				reverseTransformations.putIfAbsent(outputItem, inputItem);
+				// Track that outputItem derives from inputItem
+				directBaseMapping.putIfAbsent(outputItem, inputItem);
 			}
 		}
 
-		// Build bidirectional transformations
-		// If A -> B exists, also add B -> A
-		Map<Item, List<Item>> additionalTransformations = new HashMap<>();
-		for (Map.Entry<Item, List<Item>> entry : transformations.entrySet()) {
-			Item input = entry.getKey();
-			for (Item output : entry.getValue()) {
-				additionalTransformations.computeIfAbsent(output, k -> new ArrayList<>())
-					.add(input);
-			}
+		// Step 2: Find base blocks (blocks that aren't derived from anything)
+		Set<Item> allBlocks = new HashSet<>();
+		allBlocks.addAll(recipeData.keySet());
+		for (Map<Item, Integer> outputs : recipeData.values()) {
+			allBlocks.addAll(outputs.keySet());
 		}
 
-		// Merge additional transformations
-		for (Map.Entry<Item, List<Item>> entry : additionalTransformations.entrySet()) {
-			transformations.merge(entry.getKey(), entry.getValue(), (oldList, newList) -> {
-				List<Item> merged = new ArrayList<>(oldList);
-				for (Item item : newList) {
-					if (!merged.contains(item)) {
-						merged.add(item);
+		// Find the ultimate base for each block
+		for (Item block : allBlocks) {
+			Item base = findBaseBlock(block, directBaseMapping);
+			blockToBase.put(block, base);
+			blockFamilies.computeIfAbsent(base, k -> new HashSet<>()).add(block);
+		}
+
+		// Step 3: Build cross-family transformations
+		// For each family, any block can transform to any other block in the family
+		for (Set<Item> family : blockFamilies.values()) {
+			for (Item block : family) {
+				// This block can transform to all other blocks in its family
+				for (Item target : family) {
+					if (block != target) {
+						// Transformation exists through the base block
+						blockToBase.put(block, blockToBase.get(block));
 					}
 				}
-				return merged;
-			});
+			}
 		}
 
 		initialized = true;
-		BlockCompactionMod.LOGGER.info("Loaded {} stonecutter recipe groups", transformations.size());
+		BlockCompactionMod.LOGGER.info("Loaded {} block families with {} total blocks",
+			blockFamilies.size(), allBlocks.size());
+	}
+
+	/**
+	 * Find the ultimate base block by following the chain
+	 */
+	private static Item findBaseBlock(Item item, Map<Item, Item> directMapping) {
+		Item current = item;
+		Set<Item> visited = new HashSet<>();
+
+		while (directMapping.containsKey(current) && !visited.contains(current)) {
+			visited.add(current);
+			current = directMapping.get(current);
+		}
+
+		return current;
 	}
 
 	public static boolean isInitialized() {
@@ -86,33 +111,109 @@ public class StonecutterRecipeManager {
 	}
 
 	/**
-	 * Get all possible transformations for an item
+	 * Get all possible transformations for an item (all blocks in its family)
 	 */
 	public static List<Item> getTransformations(Item item) {
-		return transformations.getOrDefault(item, Collections.emptyList());
+		Item base = blockToBase.get(item);
+		if (base == null) {
+			return Collections.emptyList();
+		}
+
+		Set<Item> family = blockFamilies.get(base);
+		if (family == null) {
+			return Collections.emptyList();
+		}
+
+		// Return all blocks except the item itself
+		List<Item> result = new ArrayList<>();
+		for (Item familyMember : family) {
+			if (familyMember != item) {
+				result.add(familyMember);
+			}
+		}
+
+		return result;
 	}
 
 	/**
 	 * Check if an item has any transformations
 	 */
 	public static boolean hasTransformations(Item item) {
-		return transformations.containsKey(item) && !transformations.get(item).isEmpty();
+		Item base = blockToBase.get(item);
+		if (base == null) return false;
+
+		Set<Item> family = blockFamilies.get(base);
+		return family != null && family.size() > 1;
 	}
 
 	/**
-	 * Get the base block for an item (for auto-pickup)
-	 * This traces back through reverse transformations to find the "original" block
+	 * Get the base block for an item
 	 */
 	public static Item getBaseBlock(Item item) {
-		Item base = item;
-		Set<Item> visited = new HashSet<>();
+		return blockToBase.getOrDefault(item, item);
+	}
 
-		// Follow reverse transformation chain to find base
-		while (reverseTransformations.containsKey(base) && !visited.contains(base)) {
-			visited.add(base);
-			base = reverseTransformations.get(base);
+	/**
+	 * Calculate the ratio between two blocks.
+	 * Returns how many targetItems you get from 1 sourceItem.
+	 * For example: Stone -> Stone Slab = 2.0
+	 *              Stone Slab -> Stone = 0.5
+	 */
+	public static double getConversionRatio(Item sourceItem, Item targetItem) {
+		if (sourceItem == targetItem) {
+			return 1.0;
 		}
 
-		return base;
+		Item base = getBaseBlock(sourceItem);
+		if (!base.equals(getBaseBlock(targetItem))) {
+			return 1.0; // Different families, no conversion
+		}
+
+		// Calculate how many base blocks 1 sourceItem represents
+		double sourceToBase = getItemToBaseRatio(sourceItem);
+		// Calculate how many targetItems 1 base block makes
+		double baseToTarget = getBaseToItemRatio(targetItem);
+
+		return sourceToBase * baseToTarget;
+	}
+
+	/**
+	 * Get how many base blocks 1 of this item represents
+	 * Stone Slab -> 0.5 (2 slabs = 1 stone)
+	 * Stone -> 1.0
+	 */
+	private static double getItemToBaseRatio(Item item) {
+		Item base = getBaseBlock(item);
+		if (item.equals(base)) {
+			return 1.0;
+		}
+
+		// Find the recipe: base -> item
+		Map<Item, Integer> baseRecipes = recipeData.get(base);
+		if (baseRecipes != null && baseRecipes.containsKey(item)) {
+			int count = baseRecipes.get(item);
+			return 1.0 / count; // If 1 base makes 2 items, then 1 item = 0.5 base
+		}
+
+		return 1.0; // Default if no recipe found
+	}
+
+	/**
+	 * Get how many of this item 1 base block makes
+	 * Stone -> Stone Slab = 2.0
+	 * Stone -> Stone = 1.0
+	 */
+	private static double getBaseToItemRatio(Item item) {
+		Item base = getBaseBlock(item);
+		if (item.equals(base)) {
+			return 1.0;
+		}
+
+		Map<Item, Integer> baseRecipes = recipeData.get(base);
+		if (baseRecipes != null && baseRecipes.containsKey(item)) {
+			return baseRecipes.get(item).doubleValue();
+		}
+
+		return 1.0;
 	}
 }
