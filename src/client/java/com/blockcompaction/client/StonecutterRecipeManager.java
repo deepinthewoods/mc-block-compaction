@@ -5,10 +5,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.SelectableRecipe;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 
 import java.util.*;
 
@@ -27,6 +26,26 @@ public class StonecutterRecipeManager {
 	// Maps any block to its family's base block
 	private static final Map<Item, Item> blockToBase = new HashMap<>();
 
+	private static boolean waitingOnWorldLogged = false;
+	private static boolean waitingOnRecipesLogged = false;
+	private static boolean waitingOnDataLogged = false;
+	private static boolean waitingOnFamiliesLogged = false;
+
+	/**
+	 * Reset the cached recipe data so it can be rebuilt when a new world is joined.
+	 */
+	public static void reset() {
+		initialized = false;
+		recipeData.clear();
+		blockFamilies.clear();
+		blockToBase.clear();
+		waitingOnWorldLogged = false;
+		waitingOnRecipesLogged = false;
+		waitingOnDataLogged = false;
+		waitingOnFamiliesLogged = false;
+		BlockCompactionMod.LOGGER.info("BlockCompaction: cleared stonecutter recipe cache");
+	}
+
 	public static void initialize() {
 		if (initialized) return;
 
@@ -36,30 +55,47 @@ public class StonecutterRecipeManager {
 
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null || client.getConnection() == null) {
+			if (!waitingOnWorldLogged) {
+				waitingOnWorldLogged = true;
+				BlockCompactionMod.LOGGER.info("BlockCompaction: waiting for world/connection before loading stonecutter recipes");
+			}
 			return;
 		}
+		waitingOnWorldLogged = false;
 
 		// Step 1: Load all stonecutter recipes with their output counts
 		Map<Item, Item> directBaseMapping = new HashMap<>();
+		boolean loadedRecipe = false;
 
 		try {
-			var connection = client.getConnection();
-			if (connection == null) {
+			var level = client.level;
+			if (level == null) {
 				return;
 			}
 
-			var registryAccess = client.level.registryAccess();
-			SelectableRecipe.SingleInputSet<StonecutterRecipe> stonecutterEntries = connection.recipes()
+			SelectableRecipe.SingleInputSet<StonecutterRecipe> stonecutterEntries = level.recipeAccess()
 				.stonecutterRecipes();
-
-			for (SelectableRecipe.SingleInputEntry<StonecutterRecipe> entry : stonecutterEntries.entries()) {
-				var recipeHolderOptional = entry.recipe().recipe();
-				if (recipeHolderOptional.isEmpty()) {
-					continue;
+			if (stonecutterEntries == null) {
+				if (!waitingOnRecipesLogged) {
+					waitingOnRecipesLogged = true;
+					BlockCompactionMod.LOGGER.info("BlockCompaction: waiting for level recipe data before building tooltip data");
 				}
+				return;
+			}
 
-				RecipeHolder<StonecutterRecipe> holder = recipeHolderOptional.get();
+			List<SelectableRecipe.SingleInputEntry<StonecutterRecipe>> entries = stonecutterEntries.entries();
+			if (entries.isEmpty()) {
+				if (!waitingOnRecipesLogged) {
+					waitingOnRecipesLogged = true;
+					BlockCompactionMod.LOGGER.info("BlockCompaction: level stonecutter recipes empty, waiting for retry");
+				}
+				return;
+			}
+			waitingOnRecipesLogged = false;
 
+			var displayContext = SlotDisplayContext.fromLevel(level);
+
+			for (SelectableRecipe.SingleInputEntry<StonecutterRecipe> entry : entries) {
 				// Each ingredient may contain multiple possible input items (tags)
 				List<Item> inputItems = entry.input().items()
 					.map(Holder::value)
@@ -69,23 +105,33 @@ public class StonecutterRecipeManager {
 					continue;
 				}
 
+				ItemStack output = entry.recipe()
+					.optionDisplay()
+					.resolveForFirstStack(displayContext);
+				if (output.isEmpty()) {
+					continue;
+				}
+
+				Item outputItem = output.getItem();
+				int outputCount = output.getCount();
+
 				for (Item inputItem : inputItems) {
-					ItemStack output = holder.value().assemble(new SingleRecipeInput(new ItemStack(inputItem)), registryAccess);
-					if (output.isEmpty()) {
-						continue;
-					}
-
-					Item outputItem = output.getItem();
-					int outputCount = output.getCount();
-
-					// Store recipe data
 					recipeData.computeIfAbsent(inputItem, k -> new HashMap<>())
 						.put(outputItem, outputCount);
-
-					// Track that outputItem derives from inputItem
 					directBaseMapping.putIfAbsent(outputItem, inputItem);
+					loadedRecipe = true;
 				}
 			}
+
+			if (!loadedRecipe || recipeData.isEmpty()) {
+				if (!waitingOnDataLogged) {
+					waitingOnDataLogged = true;
+					BlockCompactionMod.LOGGER.info("BlockCompaction: stonecutter entries present (count {}) but no usable recipe data yet",
+						entries.size());
+				}
+				return;
+			}
+			waitingOnDataLogged = false;
 		} catch (Exception e) {
 			BlockCompactionMod.LOGGER.error("Failed to initialize stonecutter recipes", e);
 			return;
@@ -119,7 +165,20 @@ public class StonecutterRecipeManager {
 			}
 		}
 
+		if (blockFamilies.isEmpty()) {
+			if (!waitingOnFamiliesLogged) {
+				waitingOnFamiliesLogged = true;
+				BlockCompactionMod.LOGGER.info("BlockCompaction: built recipe data but found no block families");
+			}
+			return;
+		}
+		waitingOnFamiliesLogged = false;
+
 		initialized = true;
+		waitingOnWorldLogged = false;
+		waitingOnRecipesLogged = false;
+		waitingOnDataLogged = false;
+		waitingOnFamiliesLogged = false;
 		BlockCompactionMod.LOGGER.info("Loaded {} block families with {} total blocks",
 			blockFamilies.size(), allBlocks.size());
 	}

@@ -1,6 +1,7 @@
 package com.blockcompaction.mixin;
 
 import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionMod;
 import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
@@ -27,7 +28,21 @@ public abstract class ScreenMixin {
 	@Inject(method = "getTooltipFromItem", at = @At("RETURN"), cancellable = true)
 	private static void addTransformationTooltip(Minecraft minecraft, ItemStack stack, CallbackInfoReturnable<List<Component>> cir) {
         List<Component> tooltip = cir.getReturnValue();
-        if (!BlockCompactionClient.isEnabled() || stack.isEmpty() || tooltip == null) {
+        if (tooltip == null) {
+            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: base tooltip missing");
+            return;
+        }
+        if (!BlockCompactionClient.isEnabled()) {
+            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: mod disabled");
+            return;
+        }
+        if (stack.isEmpty()) {
+            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: empty stack");
+            return;
+        }
+
+        if (!StonecutterRecipeManager.isInitialized()) {
+            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: recipe manager not initialized for {}", stack.getHoverName().getString());
             return;
         }
 
@@ -35,11 +50,15 @@ public abstract class ScreenMixin {
         List<Item> transformations = TransformationSelectionManager.getTransformations(item);
 
         if (transformations.isEmpty()) {
+            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: no transformations for {}", stack.getHoverName().getString());
             return;
         }
 
-        List<Component> newTooltip = new ArrayList<>(tooltip);
         int selectedIndex = TransformationSelectionManager.getSelectionIndex(item);
+        BlockCompactionMod.LOGGER.info("BlockCompaction tooltip: {} -> {} transformations (selected {}), initialized={}, tooltipBaseSize={}",
+            stack.getHoverName().getString(), transformations.size(), selectedIndex, StonecutterRecipeManager.isInitialized(), tooltip.size());
+
+        List<Component> newTooltip = new ArrayList<>(tooltip);
 
         newTooltip.add(Component.empty());
         newTooltip.add(Component.literal("Transformations:").withStyle(ChatFormatting.GOLD));

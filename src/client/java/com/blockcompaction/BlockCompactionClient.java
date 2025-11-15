@@ -1,5 +1,6 @@
 package com.blockcompaction;
 
+import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.ModKeybinds;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
@@ -9,20 +10,34 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 public class BlockCompactionClient implements ClientModInitializer {
 	private static boolean enabled = true;
 	private static boolean autoRefillEnabled = true;
+	private static boolean loggedInitAttempt = false;
 
 	@Override
 	public void onInitializeClient() {
 		ModKeybinds.register();
 
-		// TODO: Initialize recipe manager after resources are loaded
-		// Disabled due to accessor mixin field names not matching Mojang mappings
-		/*
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			if (client.level != null && !StonecutterRecipeManager.isInitialized()) {
-				StonecutterRecipeManager.initialize();
+			if (client == null) {
+				return;
+			}
+
+			if (client.level != null && client.getConnection() != null) {
+				if (!StonecutterRecipeManager.isInitialized()) {
+					if (!loggedInitAttempt) {
+						loggedInitAttempt = true;
+						BlockCompactionMod.LOGGER.info("BlockCompaction: triggering stonecutter recipe initialization");
+					}
+					StonecutterRecipeManager.initialize();
+				} else if (loggedInitAttempt) {
+					loggedInitAttempt = false;
+				}
+			} else if (StonecutterRecipeManager.isInitialized()) {
+				StonecutterRecipeManager.reset();
+				TransformationSelectionManager.clearAll();
+				FractionalBlockTracker.clearAll();
+				loggedInitAttempt = false;
 			}
 		});
-		*/
 
 		BlockCompactionMod.LOGGER.info("Block Compaction client initialized!");
 	}
