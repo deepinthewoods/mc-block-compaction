@@ -20,48 +20,49 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class AbstractContainerScreenMixin {
 
 	/**
-	 * Transform items when they're picked up from a slot with ratio-aware conversion
+	 * Transform slot contents BEFORE vanilla picks them up
 	 */
-	@Inject(method = "slotClicked", at = @At("RETURN"))
-	private void onSlotClickedReturn(Slot slot, int slotId, int mouseButton, ClickType type, CallbackInfo ci) {
+	@Inject(method = "slotClicked", at = @At("HEAD"))
+	private void onSlotClickedHead(Slot slot, int slotId, int mouseButton, ClickType type, CallbackInfo ci) {
 		if (!BlockCompactionClient.isEnabled()) {
-			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: mod disabled");
 			return;
 		}
 
 		// Only transform on pickup (left/right click)
 		if (type != ClickType.PICKUP) {
-			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: not PICKUP type, was {}", type);
 			return;
 		}
 
-		// Check if player is now carrying an item
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.player != null && mc.player.containerMenu != null) {
-			ItemStack carried = mc.player.containerMenu.getCarried();
-			if (!carried.isEmpty()) {
-				Item sourceItem = carried.getItem();
-				Item targetItem = TransformationSelectionManager.getSelectedTransformation(sourceItem);
+		if (mc.player == null || mc.player.containerMenu == null || slot == null) {
+			return;
+		}
 
-				com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: sourceItem={}, targetItem={}, hasTransformations={}, selectionIndex={}",
-					sourceItem, targetItem, StonecutterRecipeManager.hasTransformations(sourceItem),
-					TransformationSelectionManager.getSelectionIndex(sourceItem));
+		// Only transform when picking up from a slot (not placing into one)
+		ItemStack carried = mc.player.containerMenu.getCarried();
+		ItemStack slotStack = slot.getItem();
 
-				if (targetItem != null && targetItem != sourceItem) {
-					com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: transforming {} to {}", sourceItem, targetItem);
-					transformCarriedStack(mc, carried, sourceItem, targetItem);
-				} else {
-					com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: skipping transform (targetItem={}, same={})",
-						targetItem, targetItem == sourceItem);
-				}
-			} else {
-				com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked: carried is empty");
-			}
+		// Only transform on full pickup (slot has items, carried is empty)
+		if (slotStack.isEmpty() || !carried.isEmpty()) {
+			return;
+		}
+
+		Item sourceItem = slotStack.getItem();
+		Item targetItem = TransformationSelectionManager.getSelectedTransformation(sourceItem);
+
+		com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked HEAD: slot={}, sourceItem={}, targetItem={}, hasTransformations={}, selectionIndex={}",
+			slotStack.getHoverName().getString(), sourceItem, targetItem,
+			StonecutterRecipeManager.hasTransformations(sourceItem),
+			TransformationSelectionManager.getSelectionIndex(sourceItem));
+
+		if (targetItem != null && targetItem != sourceItem) {
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction slotClicked HEAD: transforming slot contents {} to {}", sourceItem, targetItem);
+			transformSlotStack(slot, slotStack, sourceItem, targetItem);
 		}
 	}
 
-	private void transformCarriedStack(Minecraft mc, ItemStack carried, Item sourceItem, Item targetItem) {
-		int sourceCount = carried.getCount();
+	private void transformSlotStack(Slot slot, ItemStack slotStack, Item sourceItem, Item targetItem) {
+		int sourceCount = slotStack.getCount();
 
 		// Calculate conversion ratio
 		double ratio = StonecutterRecipeManager.getConversionRatio(sourceItem, targetItem);
@@ -85,14 +86,16 @@ public class AbstractContainerScreenMixin {
 			FractionalBlockTracker.clear(targetItem);
 		}
 
-		// Create transformed stack with whole items only
+		// Replace slot contents with transformed items
 		if (wholeItems > 0) {
 			ItemStack newStack = new ItemStack(targetItem, wholeItems);
-			newStack.applyComponents(carried.getComponents());
-			mc.player.containerMenu.setCarried(newStack);
+			newStack.applyComponents(slotStack.getComponents());
+			slot.set(newStack);
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction: transformed slot to {} x{}", targetItem, wholeItems);
 		} else {
-			// No whole items, clear the carried stack
-			mc.player.containerMenu.setCarried(ItemStack.EMPTY);
+			// No whole items, clear the slot
+			slot.set(ItemStack.EMPTY);
+			com.blockcompaction.BlockCompactionMod.LOGGER.info("BlockCompaction: cleared slot (no whole items, stored {})", remainder);
 		}
 	}
 
