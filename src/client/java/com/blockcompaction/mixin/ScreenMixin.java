@@ -5,6 +5,9 @@ import com.blockcompaction.BlockCompactionMod;
 import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
+import com.blockcompaction.client.tooltip.TransformationTooltipData;
+import com.blockcompaction.client.tooltip.TransformationTooltipEntry;
+import com.blockcompaction.client.tooltip.TransformationTooltipState;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -59,33 +62,13 @@ public abstract class ScreenMixin {
             stack.getHoverName().getString(), transformations.size(), selectedIndex, StonecutterRecipeManager.isInitialized(), tooltip.size());
 
         List<Component> newTooltip = new ArrayList<>(tooltip);
+        List<TransformationTooltipEntry> entries = new ArrayList<>(transformations.size());
 
-        newTooltip.add(Component.empty());
-        newTooltip.add(Component.literal("Transformations:").withStyle(ChatFormatting.GOLD));
+        int iconInsertIndex = newTooltip.size();
 
         for (int i = 0; i < transformations.size(); i++) {
             Item transformItem = transformations.get(i);
-
-            double ratio = StonecutterRecipeManager.getConversionRatio(item, transformItem);
-            String ratioStr = formatRatio(ratio);
-
-            Component line;
-            if (i == selectedIndex) {
-                line = Component.literal("◆ ")
-                    .withStyle(ChatFormatting.GREEN)
-                    .append(Component.literal(new ItemStack(transformItem).getHoverName().getString())
-                        .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
-                    .append(Component.literal(" " + ratioStr)
-                        .withStyle(ChatFormatting.YELLOW));
-            } else {
-                line = Component.literal("  ")
-                    .append(Component.literal(new ItemStack(transformItem).getHoverName().getString())
-                        .withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(" " + ratioStr)
-                        .withStyle(ChatFormatting.DARK_GRAY));
-            }
-
-            newTooltip.add(line);
+            entries.add(new TransformationTooltipEntry(new ItemStack(transformItem), i == selectedIndex));
         }
 
         double fractional = FractionalBlockTracker.getFractional(item);
@@ -94,19 +77,7 @@ public abstract class ScreenMixin {
                 .withStyle(ChatFormatting.AQUA, ChatFormatting.ITALIC));
         }
 
-        newTooltip.add(Component.literal("Scroll to select").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        TransformationTooltipState.attach(newTooltip, new TransformationTooltipData(entries, iconInsertIndex));
         cir.setReturnValue(newTooltip);
-	}
-
-	private static String formatRatio(double ratio) {
-		if (Math.abs(ratio - 1.0) < 0.001) {
-			return "(1:1)";
-		} else if (ratio > 1.0) {
-			int r = (int) Math.round(ratio);
-			return "(1:" + r + ")";
-		} else {
-			int r = (int) Math.round(1.0 / ratio);
-			return "(" + r + ":1)";
-		}
 	}
 }

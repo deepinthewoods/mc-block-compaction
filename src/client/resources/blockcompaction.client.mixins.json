@@ -6,6 +6,7 @@
 	"client": [
 		"AbstractContainerScreenAccessor",
 		"AbstractContainerScreenMixin",
+		"GuiGraphicsMixin",
 		"InventoryAccessor",
 		"ItemEntityMixin",
 		"MinecraftMixin",
