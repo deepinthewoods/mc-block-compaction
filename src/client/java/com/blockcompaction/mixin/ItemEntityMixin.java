@@ -1,6 +1,6 @@
 package com.blockcompaction.mixin;
 
-import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionState;
 import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -30,7 +30,7 @@ public abstract class ItemEntityMixin {
 	 */
 	@Inject(method = "playerTouch", at = @At("HEAD"))
 	private void onPlayerTouch(Player player, CallbackInfo ci) {
-		if (!BlockCompactionClient.isEnabled()) {
+		if (!BlockCompactionState.isEnabled()) {
 			return;
 		}
 

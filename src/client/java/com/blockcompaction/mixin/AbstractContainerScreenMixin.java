@@ -1,6 +1,6 @@
 package com.blockcompaction.mixin;
 
-import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionState;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
 import com.blockcompaction.network.BlockCompactionClientNetwork;
@@ -24,7 +24,7 @@ public class AbstractContainerScreenMixin {
 	 */
 	@Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
 	private void onMouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDeltaY, CallbackInfoReturnable<Boolean> cir) {
-		if (!BlockCompactionClient.isEnabled()) {
+		if (!BlockCompactionState.isEnabled()) {
 			return;
 		}
 
