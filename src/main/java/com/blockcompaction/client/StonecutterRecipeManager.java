@@ -1,13 +1,12 @@
 package com.blockcompaction.client;
 
-import com.blockcompaction.BlockCompactionMod;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.SelectableRecipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.world.level.Level;
 
 import java.util.*;
 
@@ -26,11 +25,6 @@ public class StonecutterRecipeManager {
 	// Maps any block to its family's base block
 	private static final Map<Item, Item> blockToBase = new HashMap<>();
 
-	private static boolean waitingOnWorldLogged = false;
-	private static boolean waitingOnRecipesLogged = false;
-	private static boolean waitingOnDataLogged = false;
-	private static boolean waitingOnFamiliesLogged = false;
-
 	/**
 	 * Reset the cached recipe data so it can be rebuilt when a new world is joined.
 	 */
@@ -39,59 +33,41 @@ public class StonecutterRecipeManager {
 		recipeData.clear();
 		blockFamilies.clear();
 		blockToBase.clear();
-		waitingOnWorldLogged = false;
-		waitingOnRecipesLogged = false;
-		waitingOnDataLogged = false;
-		waitingOnFamiliesLogged = false;
-		BlockCompactionMod.LOGGER.info("BlockCompaction: cleared stonecutter recipe cache");
 	}
 
-	public static void initialize() {
-		if (initialized) return;
+	public static boolean ensureInitialized(Level level) {
+		if (initialized) {
+			return true;
+		}
+
+		if (level == null) {
+			return false;
+		}
 
 		recipeData.clear();
 		blockFamilies.clear();
 		blockToBase.clear();
 
-		Minecraft client = Minecraft.getInstance();
-		if (client.level == null || client.getConnection() == null) {
-			if (!waitingOnWorldLogged) {
-				waitingOnWorldLogged = true;
-				BlockCompactionMod.LOGGER.info("BlockCompaction: waiting for world/connection before loading stonecutter recipes");
-			}
-			return;
-		}
-		waitingOnWorldLogged = false;
+		buildRecipeData(level);
+		return initialized;
+	}
 
+	private static void buildRecipeData(Level level) {
 		// Step 1: Load all stonecutter recipes with their output counts
 		Map<Item, Item> directBaseMapping = new HashMap<>();
 		boolean loadedRecipe = false;
 
 		try {
-			var level = client.level;
-			if (level == null) {
-				return;
-			}
-
 			SelectableRecipe.SingleInputSet<StonecutterRecipe> stonecutterEntries = level.recipeAccess()
 				.stonecutterRecipes();
 			if (stonecutterEntries == null) {
-				if (!waitingOnRecipesLogged) {
-					waitingOnRecipesLogged = true;
-					BlockCompactionMod.LOGGER.info("BlockCompaction: waiting for level recipe data before building tooltip data");
-				}
 				return;
 			}
 
 			List<SelectableRecipe.SingleInputEntry<StonecutterRecipe>> entries = stonecutterEntries.entries();
 			if (entries.isEmpty()) {
-				if (!waitingOnRecipesLogged) {
-					waitingOnRecipesLogged = true;
-					BlockCompactionMod.LOGGER.info("BlockCompaction: level stonecutter recipes empty, waiting for retry");
-				}
 				return;
 			}
-			waitingOnRecipesLogged = false;
 
 			var displayContext = SlotDisplayContext.fromLevel(level);
 
@@ -124,16 +100,9 @@ public class StonecutterRecipeManager {
 			}
 
 			if (!loadedRecipe || recipeData.isEmpty()) {
-				if (!waitingOnDataLogged) {
-					waitingOnDataLogged = true;
-					BlockCompactionMod.LOGGER.info("BlockCompaction: stonecutter entries present (count {}) but no usable recipe data yet",
-						entries.size());
-				}
 				return;
 			}
-			waitingOnDataLogged = false;
 		} catch (Exception e) {
-			BlockCompactionMod.LOGGER.error("Failed to initialize stonecutter recipes", e);
 			return;
 		}
 
@@ -166,21 +135,10 @@ public class StonecutterRecipeManager {
 		}
 
 		if (blockFamilies.isEmpty()) {
-			if (!waitingOnFamiliesLogged) {
-				waitingOnFamiliesLogged = true;
-				BlockCompactionMod.LOGGER.info("BlockCompaction: built recipe data but found no block families");
-			}
 			return;
 		}
-		waitingOnFamiliesLogged = false;
 
 		initialized = true;
-		waitingOnWorldLogged = false;
-		waitingOnRecipesLogged = false;
-		waitingOnDataLogged = false;
-		waitingOnFamiliesLogged = false;
-		BlockCompactionMod.LOGGER.info("Loaded {} block families with {} total blocks",
-			blockFamilies.size(), allBlocks.size());
 	}
 
 	/**

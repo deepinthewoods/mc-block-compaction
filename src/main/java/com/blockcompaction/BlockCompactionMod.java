@@ -1,15 +1,26 @@
 package com.blockcompaction;
 
+import com.blockcompaction.client.FractionalBlockTracker;
+import com.blockcompaction.client.TransformationSelectionManager;
+import com.blockcompaction.network.BlockCompactionNetwork;
 import net.fabricmc.api.ModInitializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 
 public class BlockCompactionMod implements ModInitializer {
 	public static final String MOD_ID = "blockcompaction";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Block Compaction initialized!");
+		BlockCompactionNetwork.registerServerReceivers();
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			if (handler.player == null) {
+				return;
+			}
+			var playerId = handler.player.getUUID();
+			FractionalBlockTracker.clearAll(playerId);
+			TransformationSelectionManager.clearAll(playerId);
+		});
+
 	}
 }

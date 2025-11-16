@@ -9,11 +9,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import com.blockcompaction.util.InventoryTransformationHelper;
+
+import java.util.UUID;
 
 public class BlockCompactionClient implements ClientModInitializer {
 	private static boolean enabled = true;
 	private static boolean autoRefillEnabled = true;
-	private static boolean loggedInitAttempt = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -25,29 +27,18 @@ public class BlockCompactionClient implements ClientModInitializer {
 			}
 
 			if (client.level != null && client.getConnection() != null) {
-				if (!StonecutterRecipeManager.isInitialized()) {
-					if (!loggedInitAttempt) {
-						loggedInitAttempt = true;
-						BlockCompactionMod.LOGGER.info("BlockCompaction: triggering stonecutter recipe initialization");
-					}
-					StonecutterRecipeManager.initialize();
-				} else if (loggedInitAttempt) {
-					loggedInitAttempt = false;
-				}
+				boolean ready = StonecutterRecipeManager.ensureInitialized(client.level);
 
 				// Handle manual transformation of carried items
-				if (enabled && client.player != null && client.player.containerMenu != null) {
+				if (ready && enabled && client.player != null && client.player.containerMenu != null) {
 					handleCarriedItemTransformation(client);
 				}
 			} else if (StonecutterRecipeManager.isInitialized()) {
 				StonecutterRecipeManager.reset();
 				TransformationSelectionManager.clearAll();
 				FractionalBlockTracker.clearAll();
-				loggedInitAttempt = false;
 			}
 		});
-
-		BlockCompactionMod.LOGGER.info("Block Compaction client initialized!");
 	}
 
 	public static boolean isEnabled() {
@@ -56,7 +47,6 @@ public class BlockCompactionClient implements ClientModInitializer {
 
 	public static void toggle() {
 		enabled = !enabled;
-		BlockCompactionMod.LOGGER.info("Block Compaction " + (enabled ? "enabled" : "disabled"));
 	}
 
 	public static boolean isAutoRefillEnabled() {
@@ -65,7 +55,6 @@ public class BlockCompactionClient implements ClientModInitializer {
 
 	public static void toggleAutoRefill() {
 		autoRefillEnabled = !autoRefillEnabled;
-		BlockCompactionMod.LOGGER.info("Auto-Refill " + (autoRefillEnabled ? "enabled" : "disabled"));
 	}
 
 	/**
@@ -76,6 +65,7 @@ public class BlockCompactionClient implements ClientModInitializer {
 	private static boolean transformationApplied = false;
 
 	private static void handleCarriedItemTransformation(Minecraft client) {
+		UUID playerId = client.player.getUUID();
 		ItemStack carried = client.player.containerMenu.getCarried();
 
 		// Check if carried stack changed (new pickup)
@@ -83,10 +73,6 @@ public class BlockCompactionClient implements ClientModInitializer {
 		boolean contentChanged = !ItemStack.matches(carried, lastCarriedStack);
 
 		if (referenceChanged || contentChanged) {
-			BlockCompactionMod.LOGGER.info("BlockCompaction tick: carried changed - refChanged={}, contentChanged={}, carried={}, last={}",
-				referenceChanged, contentChanged,
-				carried.isEmpty() ? "EMPTY" : carried.getItem() + "x" + carried.getCount(),
-				lastCarriedStack.isEmpty() ? "EMPTY" : lastCarriedStack.getItem() + "x" + lastCarriedStack.getCount());
 			lastCarriedStack = carried.copy(); // Use copy to avoid reference issues
 			transformationApplied = false;
 		}
@@ -97,55 +83,24 @@ public class BlockCompactionClient implements ClientModInitializer {
 		}
 
 		Item sourceItem = carried.getItem();
-		Item targetItem = TransformationSelectionManager.getSelectedTransformation(sourceItem);
-
-		BlockCompactionMod.LOGGER.info("BlockCompaction tick: checking transform - source={}, target={}, hasTransformations={}",
-			sourceItem, targetItem, StonecutterRecipeManager.hasTransformations(sourceItem));
+		Item targetItem = TransformationSelectionManager.getSelectedTransformation(playerId, sourceItem);
 
 		if (targetItem != null && targetItem != sourceItem) {
-			transformCarriedStack(client, carried, sourceItem, targetItem);
+			transformCarriedStack(client, carried, sourceItem, targetItem, playerId);
 			transformationApplied = true;
 		}
 	}
 
-	private static void transformCarriedStack(Minecraft mc, ItemStack carried, Item sourceItem, Item targetItem) {
-		int sourceCount = carried.getCount();
+	private static void transformCarriedStack(Minecraft mc, ItemStack carried, Item sourceItem, Item targetItem, UUID playerId) {
+		ItemStack transformed = InventoryTransformationHelper.createTransformedStack(playerId, carried, sourceItem, targetItem);
 
-		// Calculate conversion ratio
-		double ratio = StonecutterRecipeManager.getConversionRatio(sourceItem, targetItem);
-
-		// Calculate total target items (as fractional amount)
-		double totalTargetAmount = sourceCount * ratio;
-
-		// Add any existing fractional amount for this target item
-		double existingFractional = FractionalBlockTracker.getFractional(targetItem);
-		totalTargetAmount += existingFractional;
-
-		// Extract whole items
-		int wholeItems = (int) totalTargetAmount;
-		double remainder = totalTargetAmount - wholeItems;
-
-		// Update fractional tracker
-		if (remainder > 0.0001) {
-			FractionalBlockTracker.clear(targetItem);
-			FractionalBlockTracker.addAndExtract(targetItem, remainder);
-		} else {
-			FractionalBlockTracker.clear(targetItem);
-		}
-
-		// Create transformed stack with whole items only
-		if (wholeItems > 0) {
-			ItemStack newStack = new ItemStack(targetItem, wholeItems);
-			newStack.applyComponents(carried.getComponents());
-			mc.player.containerMenu.setCarried(newStack);
-			lastCarriedStack = newStack;
-			BlockCompactionMod.LOGGER.info("BlockCompaction tick: transformed {} x{} to {} x{}",
-				sourceItem, sourceCount, targetItem, wholeItems);
+		if (!transformed.isEmpty()) {
+			mc.player.containerMenu.setCarried(transformed);
+			lastCarriedStack = transformed;
 		} else {
 			// No whole items, clear the carried stack
 			mc.player.containerMenu.setCarried(ItemStack.EMPTY);
 			lastCarriedStack = ItemStack.EMPTY;
-			BlockCompactionMod.LOGGER.info("BlockCompaction tick: cleared carried (no whole items, stored {})", remainder);
 		}
 	}
 }

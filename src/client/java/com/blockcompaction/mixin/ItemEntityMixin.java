@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.UUID;
+
 @Mixin(ItemEntity.class)
 public abstract class ItemEntityMixin {
 
@@ -45,6 +47,7 @@ public abstract class ItemEntityMixin {
 	}
 
 	private void transformToBaseWithFractional(ItemEntity itemEntity, ItemStack stack, Item sourceItem, Item baseItem, Player player) {
+		UUID playerId = player.getUUID();
 		int sourceCount = stack.getCount();
 
 		// FIRST: Check if player has space in existing stacks of the source item
@@ -60,7 +63,7 @@ public abstract class ItemEntityMixin {
 		double baseBlockAmount = sourceCount * ratio;
 
 		// Add any existing fractional amount
-		double existingFractional = FractionalBlockTracker.getFractional(baseItem);
+		double existingFractional = FractionalBlockTracker.getFractional(playerId, baseItem);
 		double totalAmount = baseBlockAmount + existingFractional;
 
 		// Check if player has partial stacks of the base item we can add to
@@ -76,9 +79,9 @@ public abstract class ItemEntityMixin {
 			double remainder = totalAmount - blocksToAddToStacks;
 
 			// Update fractional tracker with remainder
-			FractionalBlockTracker.clear(baseItem);
+			FractionalBlockTracker.clear(playerId, baseItem);
 			if (remainder > 0.0001) {
-				FractionalBlockTracker.addAndExtract(baseItem, remainder);
+				FractionalBlockTracker.addAndExtract(playerId, baseItem, remainder);
 			}
 
 			// Set the item entity to the blocks we're adding
@@ -88,8 +91,8 @@ public abstract class ItemEntityMixin {
 		} else {
 			// No partial stacks or not enough for a whole block
 			// Use normal fractional tracking
-			FractionalBlockTracker.clear(baseItem);
-			int wholeBlocks = FractionalBlockTracker.addAndExtract(baseItem, totalAmount);
+			FractionalBlockTracker.clear(playerId, baseItem);
+			int wholeBlocks = FractionalBlockTracker.addAndExtract(playerId, baseItem, totalAmount);
 
 			if (wholeBlocks > 0) {
 				ItemStack newStack = new ItemStack(baseItem, wholeBlocks);

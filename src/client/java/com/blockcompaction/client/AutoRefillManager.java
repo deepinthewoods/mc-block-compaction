@@ -1,6 +1,5 @@
 package com.blockcompaction.client;
 
-import com.blockcompaction.BlockCompactionMod;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -41,7 +40,6 @@ public class AutoRefillManager {
 		int found = findAndTakeIdenticalItems(inventory, item, needed, hotbarSlot);
 		if (found > 0) {
 			hotbarStack.grow(found);
-			BlockCompactionMod.LOGGER.debug("Refilled {} with {} identical items", item, found);
 			return;
 		}
 
@@ -51,7 +49,6 @@ public class AutoRefillManager {
 			int converted = tryConvertFromItem(inventory, baseItem, item, needed, hotbarSlot);
 			if (converted > 0) {
 				hotbarStack.grow(converted);
-				BlockCompactionMod.LOGGER.debug("Refilled {} with {} converted from base", item, converted);
 				return;
 			}
 		}
@@ -61,7 +58,6 @@ public class AutoRefillManager {
 			int converted = tryConvertFromItem(inventory, familyMember, item, needed, hotbarSlot);
 			if (converted > 0) {
 				hotbarStack.grow(converted);
-				BlockCompactionMod.LOGGER.debug("Refilled {} with {} converted from {}", item, converted, familyMember);
 				return;
 			}
 		}

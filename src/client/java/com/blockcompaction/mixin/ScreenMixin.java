@@ -1,7 +1,6 @@
 package com.blockcompaction.mixin;
 
 import com.blockcompaction.BlockCompactionClient;
-import com.blockcompaction.BlockCompactionMod;
 import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
@@ -32,34 +31,32 @@ public abstract class ScreenMixin {
 	private static void addTransformationTooltip(Minecraft minecraft, ItemStack stack, CallbackInfoReturnable<List<Component>> cir) {
         List<Component> tooltip = cir.getReturnValue();
         if (tooltip == null) {
-            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: base tooltip missing");
             return;
         }
         if (!BlockCompactionClient.isEnabled()) {
-            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: mod disabled");
             return;
         }
         if (stack.isEmpty()) {
-            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: empty stack");
             return;
         }
 
         if (!StonecutterRecipeManager.isInitialized()) {
-            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: recipe manager not initialized for {}", stack.getHoverName().getString());
             return;
         }
 
+        if (minecraft.player == null) {
+            return;
+        }
+
+        var playerId = minecraft.player.getUUID();
         Item item = stack.getItem();
         List<Item> transformations = TransformationSelectionManager.getTransformations(item);
 
         if (transformations.isEmpty()) {
-            BlockCompactionMod.LOGGER.info("BlockCompaction tooltip skipped: no transformations for {}", stack.getHoverName().getString());
             return;
         }
 
-        int selectedIndex = TransformationSelectionManager.getSelectionIndex(item);
-        BlockCompactionMod.LOGGER.info("BlockCompaction tooltip: {} -> {} transformations (selected {}), initialized={}, tooltipBaseSize={}",
-            stack.getHoverName().getString(), transformations.size(), selectedIndex, StonecutterRecipeManager.isInitialized(), tooltip.size());
+        int selectedIndex = TransformationSelectionManager.getSelectionIndex(playerId, item);
 
         List<Component> newTooltip = new ArrayList<>(tooltip);
         List<TransformationTooltipEntry> entries = new ArrayList<>(transformations.size());
@@ -71,7 +68,7 @@ public abstract class ScreenMixin {
             entries.add(new TransformationTooltipEntry(new ItemStack(transformItem), i == selectedIndex));
         }
 
-        double fractional = FractionalBlockTracker.getFractional(item);
+        double fractional = FractionalBlockTracker.getFractional(playerId, item);
         if (fractional > 0.0001) {
             newTooltip.add(Component.literal(String.format("Stored: %.2fx", fractional))
                 .withStyle(ChatFormatting.AQUA, ChatFormatting.ITALIC));
