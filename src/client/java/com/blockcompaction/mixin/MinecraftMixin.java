@@ -1,6 +1,6 @@
 package com.blockcompaction.mixin;
 
-import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionState;
 import com.blockcompaction.client.AutoRefillManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -27,7 +27,7 @@ public class MinecraftMixin {
 	 */
 	@Inject(method = "tick", at = @At("RETURN"))
 	private void onClientTick(CallbackInfo ci) {
-		if (!BlockCompactionClient.isEnabled() || !BlockCompactionClient.isAutoRefillEnabled() || player == null) {
+		if (!BlockCompactionState.isEnabled() || !BlockCompactionState.isAutoRefillEnabled() || player == null) {
 			return;
 		}
 

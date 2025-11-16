@@ -62,7 +62,12 @@ public final class InventoryTransformationHelper {
 		// Replace slot contents with transformed items
 		if (wholeItems > 0) {
 			ItemStack newStack = new ItemStack(targetItem, wholeItems);
-			newStack.applyComponents(sourceStack.getComponents());
+			// Safely copy components - if incompatible, just use default components
+			try {
+				newStack.applyComponents(sourceStack.getComponents());
+			} catch (Exception e) {
+				// Components not compatible with target item, use default components
+			}
 			return newStack;
 		}
 

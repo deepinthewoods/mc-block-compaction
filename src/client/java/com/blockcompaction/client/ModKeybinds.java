@@ -1,6 +1,6 @@
 package com.blockcompaction.client;
 
-import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionState;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
@@ -30,11 +30,11 @@ public class ModKeybinds {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (toggleKey.consumeClick()) {
-				BlockCompactionClient.toggle();
+				BlockCompactionState.toggleEnabled();
 				if (client.player != null) {
 					client.player.displayClientMessage(
 						net.minecraft.network.chat.Component.literal(
-							"Block Compaction: " + (BlockCompactionClient.isEnabled() ? "ON" : "OFF")
+							"Block Compaction: " + (BlockCompactionState.isEnabled() ? "ON" : "OFF")
 						),
 						true
 					);
@@ -42,11 +42,11 @@ public class ModKeybinds {
 			}
 
 			while (toggleAutoRefillKey.consumeClick()) {
-				BlockCompactionClient.toggleAutoRefill();
+				BlockCompactionState.toggleAutoRefill();
 				if (client.player != null) {
 					client.player.displayClientMessage(
 						net.minecraft.network.chat.Component.literal(
-							"Auto-Refill: " + (BlockCompactionClient.isAutoRefillEnabled() ? "ON" : "OFF")
+							"Auto-Refill: " + (BlockCompactionState.isAutoRefillEnabled() ? "ON" : "OFF")
 						),
 						true
 					);

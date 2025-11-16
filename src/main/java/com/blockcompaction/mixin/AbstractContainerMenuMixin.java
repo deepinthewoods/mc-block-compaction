@@ -49,7 +49,9 @@ public abstract class AbstractContainerMenuMixin {
 			return;
 		}
 
-		if (ItemStack.matches(carried, this.blockcompaction$carriedBeforeClick)) {
+		// Check if carried stack actually changed (including count)
+		if (ItemStack.isSameItemSameComponents(carried, this.blockcompaction$carriedBeforeClick)
+			&& carried.getCount() == this.blockcompaction$carriedBeforeClick.getCount()) {
 			return; // No change to carried stack
 		}
 
@@ -59,8 +61,13 @@ public abstract class AbstractContainerMenuMixin {
 			return;
 		}
 
+		// Validate that the transformation is legal to prevent cheating
+		if (!StonecutterRecipeManager.getTransformations(sourceItem).contains(targetItem)) {
+			return; // Invalid transformation - client sent bad data
+		}
+
 		ItemStack transformed = InventoryTransformationHelper.createTransformedStack(player.getUUID(), carried, sourceItem, targetItem);
-		if (ItemStack.matches(transformed, carried)) {
+		if (ItemStack.isSameItemSameComponents(transformed, carried) && transformed.getCount() == carried.getCount()) {
 			return;
 		}
 

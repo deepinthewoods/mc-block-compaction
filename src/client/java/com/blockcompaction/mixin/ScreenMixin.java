@@ -1,6 +1,6 @@
 package com.blockcompaction.mixin;
 
-import com.blockcompaction.BlockCompactionClient;
+import com.blockcompaction.BlockCompactionState;
 import com.blockcompaction.client.FractionalBlockTracker;
 import com.blockcompaction.client.StonecutterRecipeManager;
 import com.blockcompaction.client.TransformationSelectionManager;
@@ -33,7 +33,7 @@ public abstract class ScreenMixin {
         if (tooltip == null) {
             return;
         }
-        if (!BlockCompactionClient.isEnabled()) {
+        if (!BlockCompactionState.isEnabled()) {
             return;
         }
         if (stack.isEmpty()) {

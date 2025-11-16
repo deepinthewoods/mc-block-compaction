@@ -113,25 +113,11 @@ public class StonecutterRecipeManager {
 			allBlocks.addAll(outputs.keySet());
 		}
 
-		// Find the ultimate base for each block
+		// Find the ultimate base for each block and group into families
 		for (Item block : allBlocks) {
 			Item base = findBaseBlock(block, directBaseMapping);
 			blockToBase.put(block, base);
 			blockFamilies.computeIfAbsent(base, k -> new HashSet<>()).add(block);
-		}
-
-		// Step 3: Build cross-family transformations
-		// For each family, any block can transform to any other block in the family
-		for (Set<Item> family : blockFamilies.values()) {
-			for (Item block : family) {
-				// This block can transform to all other blocks in its family
-				for (Item target : family) {
-					if (block != target) {
-						// Transformation exists through the base block
-						blockToBase.put(block, blockToBase.get(block));
-					}
-				}
-			}
 		}
 
 		if (blockFamilies.isEmpty()) {
