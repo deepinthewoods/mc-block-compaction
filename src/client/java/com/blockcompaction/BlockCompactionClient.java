@@ -79,8 +79,15 @@ public class BlockCompactionClient implements ClientModInitializer {
 		ItemStack carried = client.player.containerMenu.getCarried();
 
 		// Check if carried stack changed (new pickup)
-		if (carried != lastCarriedStack) {
-			lastCarriedStack = carried;
+		boolean referenceChanged = carried != lastCarriedStack;
+		boolean contentChanged = !ItemStack.matches(carried, lastCarriedStack);
+
+		if (referenceChanged || contentChanged) {
+			BlockCompactionMod.LOGGER.info("BlockCompaction tick: carried changed - refChanged={}, contentChanged={}, carried={}, last={}",
+				referenceChanged, contentChanged,
+				carried.isEmpty() ? "EMPTY" : carried.getItem() + "x" + carried.getCount(),
+				lastCarriedStack.isEmpty() ? "EMPTY" : lastCarriedStack.getItem() + "x" + lastCarriedStack.getCount());
+			lastCarriedStack = carried.copy(); // Use copy to avoid reference issues
 			transformationApplied = false;
 		}
 
@@ -91,6 +98,9 @@ public class BlockCompactionClient implements ClientModInitializer {
 
 		Item sourceItem = carried.getItem();
 		Item targetItem = TransformationSelectionManager.getSelectedTransformation(sourceItem);
+
+		BlockCompactionMod.LOGGER.info("BlockCompaction tick: checking transform - source={}, target={}, hasTransformations={}",
+			sourceItem, targetItem, StonecutterRecipeManager.hasTransformations(sourceItem));
 
 		if (targetItem != null && targetItem != sourceItem) {
 			transformCarriedStack(client, carried, sourceItem, targetItem);
