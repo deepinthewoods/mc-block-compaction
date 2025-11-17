@@ -1,6 +1,7 @@
 package com.blockcompaction.network;
 
 import com.blockcompaction.network.payload.SelectTransformationPayload;
+import com.blockcompaction.network.payload.TransformSlotPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.world.item.Item;
 
@@ -14,5 +15,13 @@ public final class BlockCompactionClientNetwork {
 		}
 
 		ClientPlayNetworking.send(SelectTransformationPayload.from(hoveredItem, targetItem, index));
+	}
+
+	public static void sendSlotTransformation(int slotIndex, Item sourceItem, Item targetItem) {
+		if (sourceItem == null || targetItem == null) {
+			return;
+		}
+
+		ClientPlayNetworking.send(TransformSlotPayload.from(slotIndex, sourceItem, targetItem));
 	}
 }

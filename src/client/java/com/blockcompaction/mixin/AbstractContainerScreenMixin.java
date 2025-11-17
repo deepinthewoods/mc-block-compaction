@@ -20,7 +20,8 @@ import java.util.UUID;
 public class AbstractContainerScreenMixin {
 
 	/**
-	 * Handle mouse scroll selection for transformations
+	 * Handle mouse scroll selection for transformations.
+	 * Now triggers immediate slot transformation instead of just updating selection.
 	 */
 	@Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
 	private void onMouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDeltaY, CallbackInfoReturnable<Boolean> cir) {
@@ -40,9 +41,9 @@ public class AbstractContainerScreenMixin {
 		UUID playerId = minecraft.player.getUUID();
 
 		ItemStack stack = hoveredSlot.getItem();
-		Item item = stack.getItem();
+		Item sourceItem = stack.getItem();
 
-		if (!StonecutterRecipeManager.hasTransformations(item)) {
+		if (!StonecutterRecipeManager.hasTransformations(sourceItem)) {
 			return;
 		}
 
@@ -51,12 +52,16 @@ public class AbstractContainerScreenMixin {
 			return;
 		}
 
-		TransformationSelectionManager.scrollSelection(playerId, item, (int) Math.signum(scrollDelta));
-		int newIndex = TransformationSelectionManager.getSelectionIndex(playerId, item);
-		Item targetItem = TransformationSelectionManager.getStoredSelection(playerId, item);
-		if (targetItem != null) {
-			BlockCompactionClientNetwork.sendSelectionUpdate(item, targetItem, newIndex);
+		// Update selection
+		TransformationSelectionManager.scrollSelection(playerId, sourceItem, (int) Math.signum(scrollDelta));
+		Item targetItem = TransformationSelectionManager.getStoredSelection(playerId, sourceItem);
+
+		if (targetItem != null && targetItem != sourceItem) {
+			// Send transformation request to server
+			int slotIndex = hoveredSlot.index;
+			BlockCompactionClientNetwork.sendSlotTransformation(slotIndex, sourceItem, targetItem);
 		}
+
 		cir.setReturnValue(true);
 	}
 }
